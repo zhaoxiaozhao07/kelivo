@@ -169,7 +169,15 @@ class _GroupSection extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
-    final providerKeys = group.providerKeys;
+
+    // 将启用的供应商排在最上面
+    final providerKeys = List<String>.from(group.providerKeys);
+    providerKeys.sort((a, b) {
+      final aEnabled = settings.getProviderConfig(a).enabled;
+      final bEnabled = settings.getProviderConfig(b).enabled;
+      if (aEnabled == bEnabled) return 0;
+      return aEnabled ? -1 : 1; // 启用的排在前面
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
