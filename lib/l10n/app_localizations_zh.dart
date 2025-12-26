@@ -3600,6 +3600,71 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get assistantEditDeleteSummaryContent => '确定要清除此摘要吗？';
+
+  @override
+  String get providerGroupDefaultName => '默认分组';
+
+  @override
+  String get providerGroupManageTitle => '管理分组';
+
+  @override
+  String get providerGroupManageTooltip => '分组';
+
+  @override
+  String get providerGroupAddTitle => '新建分组';
+
+  @override
+  String get providerGroupEditTitle => '编辑分组';
+
+  @override
+  String get providerGroupDeleteTitle => '删除分组';
+
+  @override
+  String get providerGroupDeleteConfirm => '删除后，该分组内的供应商将移至默认分组。确定删除吗？';
+
+  @override
+  String get providerGroupNameLabel => '分组名称';
+
+  @override
+  String get providerGroupNameHint => '输入分组名称';
+
+  @override
+  String get providerGroupEnableAll => '启用全部';
+
+  @override
+  String get providerGroupDisableAll => '禁用全部';
+
+  @override
+  String get providerGroupCollapse => '折叠';
+
+  @override
+  String get providerGroupExpand => '展开';
+
+  @override
+  String get providerGroupMoveToGroup => '移动到分组';
+
+  @override
+  String get providerGroupRemoveFromGroup => '移出分组';
+
+  @override
+  String get providerGroupEmptyHint => '该分组暂无供应商';
+
+  @override
+  String providerGroupProvidersCount(int count) {
+    return '$count 个供应商';
+  }
+
+  @override
+  String get providerGroupAddedSnackbar => '已创建分组';
+
+  @override
+  String get providerGroupDeletedSnackbar => '已删除分组';
+
+  @override
+  String get providerGroupUpdatedSnackbar => '已更新分组';
+
+  @override
+  String get providersPageSelectedCount => '项已选中';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).

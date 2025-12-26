@@ -1531,5 +1531,31 @@
   "assistantEditSummaryDialogTitle": "Edit Summary",
   "assistantEditSummaryDialogHint": "Enter summary content",
   "assistantEditDeleteSummaryTitle": "Clear Summary",
-  "assistantEditDeleteSummaryContent": "Are you sure you want to clear this summary?"
+  "assistantEditDeleteSummaryContent": "Are you sure you want to clear this summary?",
+  "providerGroupDefaultName": "Default Group",
+  "providerGroupManageTitle": "Manage Groups",
+  "providerGroupManageTooltip": "Groups",
+  "providerGroupAddTitle": "New Group",
+  "providerGroupEditTitle": "Edit Group",
+  "providerGroupDeleteTitle": "Delete Group",
+  "providerGroupDeleteConfirm": "Providers in this group will be moved to the default group. Delete anyway?",
+  "providerGroupNameLabel": "Group Name",
+  "providerGroupNameHint": "Enter group name",
+  "providerGroupEnableAll": "Enable All",
+  "providerGroupDisableAll": "Disable All",
+  "providerGroupCollapse": "Collapse",
+  "providerGroupExpand": "Expand",
+  "providerGroupMoveToGroup": "Move to Group",
+  "providerGroupRemoveFromGroup": "Remove from Group",
+  "providerGroupEmptyHint": "No providers in this group",
+  "providerGroupProvidersCount": "{count} providers",
+  "@providerGroupProvidersCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "providerGroupAddedSnackbar": "Group created",
+  "providerGroupDeletedSnackbar": "Group deleted",
+  "providerGroupUpdatedSnackbar": "Group updated",
+  "providersPageSelectedCount": "items selected"
 }

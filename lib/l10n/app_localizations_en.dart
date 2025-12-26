@@ -3738,4 +3738,70 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get assistantEditDeleteSummaryContent =>
       'Are you sure you want to clear this summary?';
+
+  @override
+  String get providerGroupDefaultName => 'Default Group';
+
+  @override
+  String get providerGroupManageTitle => 'Manage Groups';
+
+  @override
+  String get providerGroupManageTooltip => 'Groups';
+
+  @override
+  String get providerGroupAddTitle => 'New Group';
+
+  @override
+  String get providerGroupEditTitle => 'Edit Group';
+
+  @override
+  String get providerGroupDeleteTitle => 'Delete Group';
+
+  @override
+  String get providerGroupDeleteConfirm =>
+      'Providers in this group will be moved to the default group. Delete anyway?';
+
+  @override
+  String get providerGroupNameLabel => 'Group Name';
+
+  @override
+  String get providerGroupNameHint => 'Enter group name';
+
+  @override
+  String get providerGroupEnableAll => 'Enable All';
+
+  @override
+  String get providerGroupDisableAll => 'Disable All';
+
+  @override
+  String get providerGroupCollapse => 'Collapse';
+
+  @override
+  String get providerGroupExpand => 'Expand';
+
+  @override
+  String get providerGroupMoveToGroup => 'Move to Group';
+
+  @override
+  String get providerGroupRemoveFromGroup => 'Remove from Group';
+
+  @override
+  String get providerGroupEmptyHint => 'No providers in this group';
+
+  @override
+  String providerGroupProvidersCount(int count) {
+    return '$count providers';
+  }
+
+  @override
+  String get providerGroupAddedSnackbar => 'Group created';
+
+  @override
+  String get providerGroupDeletedSnackbar => 'Group deleted';
+
+  @override
+  String get providerGroupUpdatedSnackbar => 'Group updated';
+
+  @override
+  String get providersPageSelectedCount => 'items selected';
 }

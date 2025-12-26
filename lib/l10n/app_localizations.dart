@@ -7009,6 +7009,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Are you sure you want to clear this summary?'**
   String get assistantEditDeleteSummaryContent;
+
+  /// No description provided for @providerGroupDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Group'**
+  String get providerGroupDefaultName;
+
+  /// No description provided for @providerGroupManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Groups'**
+  String get providerGroupManageTitle;
+
+  /// No description provided for @providerGroupManageTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Groups'**
+  String get providerGroupManageTooltip;
+
+  /// No description provided for @providerGroupAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New Group'**
+  String get providerGroupAddTitle;
+
+  /// No description provided for @providerGroupEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Group'**
+  String get providerGroupEditTitle;
+
+  /// No description provided for @providerGroupDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Group'**
+  String get providerGroupDeleteTitle;
+
+  /// No description provided for @providerGroupDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers in this group will be moved to the default group. Delete anyway?'**
+  String get providerGroupDeleteConfirm;
+
+  /// No description provided for @providerGroupNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Group Name'**
+  String get providerGroupNameLabel;
+
+  /// No description provided for @providerGroupNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter group name'**
+  String get providerGroupNameHint;
+
+  /// No description provided for @providerGroupEnableAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable All'**
+  String get providerGroupEnableAll;
+
+  /// No description provided for @providerGroupDisableAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable All'**
+  String get providerGroupDisableAll;
+
+  /// No description provided for @providerGroupCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse'**
+  String get providerGroupCollapse;
+
+  /// No description provided for @providerGroupExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand'**
+  String get providerGroupExpand;
+
+  /// No description provided for @providerGroupMoveToGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Group'**
+  String get providerGroupMoveToGroup;
+
+  /// No description provided for @providerGroupRemoveFromGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from Group'**
+  String get providerGroupRemoveFromGroup;
+
+  /// No description provided for @providerGroupEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No providers in this group'**
+  String get providerGroupEmptyHint;
+
+  /// No description provided for @providerGroupProvidersCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} providers'**
+  String providerGroupProvidersCount(int count);
+
+  /// No description provided for @providerGroupAddedSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Group created'**
+  String get providerGroupAddedSnackbar;
+
+  /// No description provided for @providerGroupDeletedSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Group deleted'**
+  String get providerGroupDeletedSnackbar;
+
+  /// No description provided for @providerGroupUpdatedSnackbar.
+  ///
+  /// In en, this message translates to:
+  /// **'Group updated'**
+  String get providerGroupUpdatedSnackbar;
+
+  /// No description provided for @providersPageSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'items selected'**
+  String get providersPageSelectedCount;
 }
 
 class _AppLocalizationsDelegate

@@ -8,7 +8,6 @@ import '../widgets/add_provider_sheet.dart';
 // grid reorder removed in favor of iOS-style list reordering
 import 'package:provider/provider.dart';
 import '../../../core/providers/settings_provider.dart';
-import '../../../core/providers/settings_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/snackbar.dart';
 import '../../../core/services/haptics.dart';
@@ -21,6 +20,8 @@ import 'dart:ui' as ui show ImageFilter;
 import '../../../shared/widgets/ios_tile_button.dart';
 import '../../../shared/widgets/ios_checkbox.dart';
 import '../widgets/provider_avatar.dart';
+import '../widgets/provider_group_sheet.dart';
+import '../widgets/grouped_providers_list.dart';
 
 class ProvidersPage extends StatefulWidget {
   const ProvidersPage({super.key});
@@ -50,12 +51,14 @@ class _ProvidersPageState extends State<ProvidersPage> {
     final dynamicItems = <_Provider>[];
     cfgs.forEach((key, cfg) {
       if (!baseKeys.contains(key)) {
-        dynamicItems.add(_Provider(
-          name: (cfg.name.isNotEmpty ? cfg.name : key),
-          keyName: key,
-          enabled: cfg.enabled,
-          modelCount: cfg.models.length,
-        ));
+        dynamicItems.add(
+          _Provider(
+            name: (cfg.name.isNotEmpty ? cfg.name : key),
+            keyName: key,
+            enabled: cfg.enabled,
+            modelCount: cfg.models.length,
+          ),
+        );
       }
     });
 
@@ -86,7 +89,9 @@ class _ProvidersPageState extends State<ProvidersPage> {
         title: Text(l10n.providersPageTitle),
         actions: [
           Tooltip(
-            message: _selectMode ? l10n.searchServicesPageDone : l10n.providersPageMultiSelectTooltip,
+            message: _selectMode
+                ? l10n.searchServicesPageDone
+                : l10n.providersPageMultiSelectTooltip,
             child: _TactileIconButton(
               icon: _selectMode ? Lucide.Check : Lucide.circleDot,
               color: cs.onSurface,
@@ -111,6 +116,17 @@ class _ProvidersPageState extends State<ProvidersPage> {
                 await showImportProviderSheet(context);
                 if (!mounted) return;
                 setState(() {});
+              },
+            ),
+          ),
+          Tooltip(
+            message: l10n.providerGroupManageTooltip,
+            child: _TactileIconButton(
+              icon: Lucide.FolderOpen,
+              color: cs.onSurface,
+              size: 22,
+              onTap: () async {
+                await showProviderGroupSheet(context);
               },
             ),
           ),
@@ -140,8 +156,7 @@ class _ProvidersPageState extends State<ProvidersPage> {
       ),
       body: Stack(
         children: [
-          _ProvidersList(
-            items: items,
+          GroupedProvidersList(
             selectMode: _selectMode,
             selectedKeys: _selected,
             onToggleSelect: (key) {
@@ -153,23 +168,6 @@ class _ProvidersPageState extends State<ProvidersPage> {
                 }
               });
             },
-            onReorder: (oldIndex, newIndex) async {
-              // Normalize newIndex because Flutter passes the index after removal
-              if (newIndex > oldIndex) newIndex -= 1;
-              final moved = items[oldIndex];
-              final mut = List<_Provider>.of(items);
-              final item = mut.removeAt(oldIndex);
-              mut.insert(newIndex, item);
-              setState(() => _settleKeys.add(moved.keyName));
-              await context.read<SettingsProvider>().setProvidersOrder([
-                for (final p in mut) p.keyName
-              ]);
-              Future.delayed(const Duration(milliseconds: 220), () {
-                if (!mounted) return;
-                setState(() => _settleKeys.remove(moved.keyName));
-              });
-            },
-            settlingKeys: _settleKeys,
           ),
           Positioned(
             left: 0,
@@ -181,16 +179,25 @@ class _ProvidersPageState extends State<ProvidersPage> {
               total: items.length,
               onExport: _onExportSelected,
               onDelete: _onDeleteSelected,
+              onMoveToGroup: _onMoveSelectedToGroup,
               onSelectAll: () {
                 setState(() {
                   // Select all deletable (non-built-in) providers
                   final baseKeys = {for (final p in base) p.keyName};
-                  final deletable = [for (final p in items) if (!baseKeys.contains(p.keyName)) p.keyName];
-                  final allSelected = deletable.isNotEmpty && deletable.every(_selected.contains) && _selected.length == deletable.length;
+                  final deletable = [
+                    for (final p in items)
+                      if (!baseKeys.contains(p.keyName)) p.keyName,
+                  ];
+                  final allSelected =
+                      deletable.isNotEmpty &&
+                      deletable.every(_selected.contains) &&
+                      _selected.length == deletable.length;
                   _selected.removeWhere((k) => !deletable.contains(k));
                   if (allSelected) {
                     // Unselect all deletable
-                    for (final k in deletable) { _selected.remove(k); }
+                    for (final k in deletable) {
+                      _selected.remove(k);
+                    }
                   } else {
                     // Select all deletable
                     _selected
@@ -207,39 +214,49 @@ class _ProvidersPageState extends State<ProvidersPage> {
   }
 
   List<_Provider> _providers({required AppLocalizations l10n}) => [
-        _p('OpenAI', 'OpenAI', enabled: true, models: 0),
-        _p(l10n.providersPageSiliconFlowName, 'SiliconFlow', enabled: true, models: 0),
-        _p('Gemini', 'Gemini', enabled: true, models: 0),
-        _p('OpenRouter', 'OpenRouter', enabled: true, models: 0),
-        _p('KelivoIN', 'KelivoIN', enabled: true, models: 0),
-        _p('Tensdaq', 'Tensdaq', enabled: false, models: 0),
-        _p('DeepSeek', 'DeepSeek', enabled: false, models: 0),
-        _p('AIhubmix', 'AIhubmix', enabled: false, models: 0),
-        _p(l10n.providersPageAliyunName, 'Aliyun', enabled: false, models: 0),
-        _p(l10n.providersPageZhipuName, 'Zhipu AI', enabled: false, models: 0),
-        _p('Claude', 'Claude', enabled: false, models: 0),
-        // _p(zh ? '腾讯混元' : 'Hunyuan', 'Hunyuan', enabled: false, models: 0),
-        // _p('InternLM', 'InternLM', enabled: true, models: 0),
-        // _p('Kimi', 'Kimi', enabled: false, models: 0),
-        _p('Grok', 'Grok', enabled: false, models: 0),
-        // _p('302.AI', '302.AI', enabled: false, models: 0),
-        // _p(zh ? '阶跃星辰' : 'StepFun', 'StepFun', enabled: false, models: 0),
-        // _p('MiniMax', 'MiniMax', enabled: true, models: 0),
-        _p(l10n.providersPageByteDanceName, 'ByteDance', enabled: false, models: 0),
-        // _p(zh ? '豆包' : 'Doubao', 'Doubao', enabled: true, models: 0),
-        // _p(zh ? '阿里云' : 'Alibaba Cloud', 'Alibaba Cloud', enabled: true, models: 0),
-        // _p('Meta', 'Meta', enabled: false, models: 0),
-        // _p('Mistral', 'Mistral', enabled: true, models: 0),
-        // _p('Perplexity', 'Perplexity', enabled: true, models: 0),
-        // _p('Cohere', 'Cohere', enabled: true, models: 0),
-        // _p('Gemma', 'Gemma', enabled: true, models: 0),
-        // _p('Cloudflare', 'Cloudflare', enabled: true, models: 0),
-        //  _p('AIHubMix', 'AIHubMix', enabled: false, models: 0),
-        // _p('Ollama', 'Ollama', enabled: true, models: 0),
-        // _p('GitHub', 'GitHub', enabled: false, models: 0),
-      ];
+    _p('OpenAI', 'OpenAI', enabled: true, models: 0),
+    _p(
+      l10n.providersPageSiliconFlowName,
+      'SiliconFlow',
+      enabled: true,
+      models: 0,
+    ),
+    _p('Gemini', 'Gemini', enabled: true, models: 0),
+    _p('OpenRouter', 'OpenRouter', enabled: true, models: 0),
+    _p('KelivoIN', 'KelivoIN', enabled: true, models: 0),
+    _p('Tensdaq', 'Tensdaq', enabled: false, models: 0),
+    _p('DeepSeek', 'DeepSeek', enabled: false, models: 0),
+    _p('AIhubmix', 'AIhubmix', enabled: false, models: 0),
+    _p(l10n.providersPageAliyunName, 'Aliyun', enabled: false, models: 0),
+    _p(l10n.providersPageZhipuName, 'Zhipu AI', enabled: false, models: 0),
+    _p('Claude', 'Claude', enabled: false, models: 0),
+    // _p(zh ? '腾讯混元' : 'Hunyuan', 'Hunyuan', enabled: false, models: 0),
+    // _p('InternLM', 'InternLM', enabled: true, models: 0),
+    // _p('Kimi', 'Kimi', enabled: false, models: 0),
+    _p('Grok', 'Grok', enabled: false, models: 0),
+    // _p('302.AI', '302.AI', enabled: false, models: 0),
+    // _p(zh ? '阶跃星辰' : 'StepFun', 'StepFun', enabled: false, models: 0),
+    // _p('MiniMax', 'MiniMax', enabled: true, models: 0),
+    _p(l10n.providersPageByteDanceName, 'ByteDance', enabled: false, models: 0),
+    // _p(zh ? '豆包' : 'Doubao', 'Doubao', enabled: true, models: 0),
+    // _p(zh ? '阿里云' : 'Alibaba Cloud', 'Alibaba Cloud', enabled: true, models: 0),
+    // _p('Meta', 'Meta', enabled: false, models: 0),
+    // _p('Mistral', 'Mistral', enabled: true, models: 0),
+    // _p('Perplexity', 'Perplexity', enabled: true, models: 0),
+    // _p('Cohere', 'Cohere', enabled: true, models: 0),
+    // _p('Gemma', 'Gemma', enabled: true, models: 0),
+    // _p('Cloudflare', 'Cloudflare', enabled: true, models: 0),
+    //  _p('AIHubMix', 'AIHubMix', enabled: false, models: 0),
+    // _p('Ollama', 'Ollama', enabled: true, models: 0),
+    // _p('GitHub', 'GitHub', enabled: false, models: 0),
+  ];
 
-  _Provider _p(String name, String key, {required bool enabled, required int models}) =>
+  _Provider _p(
+    String name,
+    String key, {
+    required bool enabled,
+    required int models,
+  }) =>
       _Provider(name: name, keyName: key, enabled: enabled, modelCount: models);
 
   Future<void> _onExportSelected() async {
@@ -252,12 +269,119 @@ class _ProvidersPageState extends State<ProvidersPage> {
     await _showMultiExportSheet(context, keys);
   }
 
+  Future<void> _onMoveSelectedToGroup() async {
+    if (_selected.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    final groups = settings.providerGroups;
+
+    // 显示分组选择弹窗
+    final targetGroupId = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 拖拽条
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: cs.onSurface.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 标题
+                Text(
+                  l10n.providerGroupMoveToGroup,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_selected.length} ${l10n.providersPageSelectedCount}',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: cs.onSurface.withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 分组列表
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: groups.length,
+                    itemBuilder: (context, index) {
+                      final group = groups[index];
+                      final isDefault =
+                          group.id == ProviderGroup.defaultGroupId;
+
+                      return ListTile(
+                        leading: Icon(
+                          Lucide.Folder,
+                          color: cs.onSurface.withOpacity(0.7),
+                        ),
+                        title: Text(
+                          isDefault
+                              ? l10n.providerGroupDefaultName
+                              : group.name,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        onTap: () => Navigator.of(ctx).pop(group.id),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (targetGroupId == null || !mounted) return;
+
+    // 批量移动所有选中的供应商
+    for (final key in _selected) {
+      await settings.moveProviderToGroup(key, targetGroupId);
+    }
+
+    if (mounted) {
+      setState(() {
+        _selected.clear();
+        _selectMode = false;
+      });
+      showAppSnackBar(
+        context,
+        message: l10n.providerGroupUpdatedSnackbar,
+        type: NotificationType.success,
+      );
+    }
+  }
+
   Future<void> _onDeleteSelected() async {
     if (_selected.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
     // Skip built-in providers (default ones)
     final builtInKeys = {for (final p in _providers(l10n: l10n)) p.keyName};
-    final keysToDelete = _selected.where((k) => !builtInKeys.contains(k)).toList(growable: false);
+    final keysToDelete = _selected
+        .where((k) => !builtInKeys.contains(k))
+        .toList(growable: false);
 
     if (keysToDelete.isEmpty) {
       // Nothing deletable selected
@@ -267,11 +391,22 @@ class _ProvidersPageState extends State<ProvidersPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('${l10n.providerDetailPageDeleteProviderTitle} (${keysToDelete.length})'),
+        title: Text(
+          '${l10n.providerDetailPageDeleteProviderTitle} (${keysToDelete.length})',
+        ),
         content: Text(l10n.providersPageDeleteSelectedConfirmContent),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l10n.providerDetailPageCancelButton)),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(l10n.providerDetailPageDeleteButton, style: const TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.providerDetailPageCancelButton),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(
+              l10n.providerDetailPageDeleteButton,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
@@ -295,7 +430,11 @@ class _ProvidersPageState extends State<ProvidersPage> {
         _selected.clear();
         _selectMode = false;
       });
-      showAppSnackBar(context, message: l10n.providersPageDeleteSelectedSnackbar, type: NotificationType.success);
+      showAppSnackBar(
+        context,
+        message: l10n.providersPageDeleteSelectedSnackbar,
+        type: NotificationType.success,
+      );
     } catch (_) {}
   }
 }
@@ -332,20 +471,30 @@ class _ProvidersList extends StatelessWidget {
         builder: (context, constraints) {
           final media = MediaQuery.of(context);
           final safeBottom = media.padding.bottom;
-          final bottomGapIfFlush = safeBottom + 16.0; // leave room above system bar
+          final bottomGapIfFlush =
+              safeBottom + 16.0; // leave room above system bar
 
-          final maxH = constraints.hasBoundedHeight ? constraints.maxHeight : double.infinity;
+          final maxH = constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : double.infinity;
           // Estimate row height: avatar(22) + vertical paddings(11*2) ~= 44
           const double rowH = 44.0;
           const double dividerH = 6.0; // _iosDivider height
           const double listPadV = 8.0; // ReorderableListView vertical padding
           final int n = items.length;
-          final double baseContentH = n == 0 ? 0.0 : (n * rowH + (n - 1) * dividerH + listPadV);
+          final double baseContentH = n == 0
+              ? 0.0
+              : (n * rowH + (n - 1) * dividerH + listPadV);
           // Decide if we should treat it as reaching bottom (considering the bottom gap we will add)
-          final bool reachesBottom = maxH.isFinite &&
-              (baseContentH >= maxH - 0.5 || (baseContentH + bottomGapIfFlush) >= maxH - 0.5);
-          final double effectiveContentH = baseContentH + (reachesBottom ? bottomGapIfFlush : 0.0);
-          final double containerH = maxH.isFinite ? (effectiveContentH.clamp(0.0, maxH)).toDouble() : effectiveContentH;
+          final bool reachesBottom =
+              maxH.isFinite &&
+              (baseContentH >= maxH - 0.5 ||
+                  (baseContentH + bottomGapIfFlush) >= maxH - 0.5);
+          final double effectiveContentH =
+              baseContentH + (reachesBottom ? bottomGapIfFlush : 0.0);
+          final double containerH = maxH.isFinite
+              ? (effectiveContentH.clamp(0.0, maxH)).toDouble()
+              : effectiveContentH;
 
           return Container(
             height: containerH.isFinite ? containerH : null,
@@ -362,7 +511,10 @@ class _ProvidersList extends StatelessWidget {
             ),
             clipBehavior: Clip.antiAlias,
             child: ReorderableListView.builder(
-              padding: EdgeInsets.only(top: 4, bottom: reachesBottom ? bottomGapIfFlush : 4),
+              padding: EdgeInsets.only(
+                top: 4,
+                bottom: reachesBottom ? bottomGapIfFlush : 4,
+              ),
               itemCount: items.length,
               onReorder: onReorder,
               buildDefaultDragHandles: false,
@@ -415,11 +567,16 @@ class _ProviderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final settings = context.watch<SettingsProvider>();
-    final cfg = settings.getProviderConfig(provider.keyName, defaultName: provider.name);
+    final cfg = settings.getProviderConfig(
+      provider.keyName,
+      defaultName: provider.name,
+    );
     final enabled = cfg.enabled;
     final l10n = AppLocalizations.of(context)!;
 
-    final statusBg = enabled ? Colors.green.withOpacity(0.12) : Colors.orange.withOpacity(0.15);
+    final statusBg = enabled
+        ? Colors.green.withOpacity(0.12)
+        : Colors.orange.withOpacity(0.15);
     final statusFg = enabled ? Colors.green : Colors.orange;
 
     final isFirst = index == 0;
@@ -456,77 +613,103 @@ class _ProviderRow extends StatelessWidget {
                 curve: Curves.easeOutCubic,
                 child: Row(
                   children: [
-                  // Animated appear of select dot area with width transition
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutCubic,
-                    width: selectMode ? 28 : 0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 150),
-                      opacity: selectMode ? 1.0 : 0.0,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: IosCheckbox(
-                          value: selected,
-                          size: 20,
-                          hitTestSize: 22,
-                          borderWidth: 1.6,
-                          activeColor: cs.primary,
-                          borderColor: cs.onSurface.withOpacity(0.35),
-                          onChanged: (_) => onToggleSelect(provider.keyName),
+                    // Animated appear of select dot area with width transition
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutCubic,
+                      width: selectMode ? 28 : 0,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: selectMode ? 1.0 : 0.0,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: IosCheckbox(
+                            value: selected,
+                            size: 20,
+                            hitTestSize: 22,
+                            borderWidth: 1.6,
+                            activeColor: cs.primary,
+                            borderColor: cs.onSurface.withOpacity(0.35),
+                            onChanged: (_) => onToggleSelect(provider.keyName),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (selectMode) const SizedBox(width: 4),
-                  SizedBox(
-                    width: 36,
-                    child: Center(
-                      child: ProviderAvatar(
-                        providerKey: provider.keyName,
-                        displayName: (cfg.name.isNotEmpty ? cfg.name : provider.keyName),
-                        size: 22,
+                    if (selectMode) const SizedBox(width: 4),
+                    SizedBox(
+                      width: 36,
+                      child: Center(
+                        child: ProviderAvatar(
+                          providerKey: provider.keyName,
+                          displayName: (cfg.name.isNotEmpty
+                              ? cfg.name
+                              : provider.keyName),
+                          size: 22,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      (cfg.name.isNotEmpty ? cfg.name : provider.name),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.w600),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        (cfg.name.isNotEmpty ? cfg.name : provider.name),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusBg,
-                      borderRadius: BorderRadius.circular(999),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        enabled
+                            ? l10n.providersPageEnabledStatus
+                            : l10n.providersPageDisabledStatus,
+                        style: TextStyle(fontSize: 11, color: statusFg),
+                      ),
                     ),
-                    child: Text(
-                      enabled ? l10n.providersPageEnabledStatus : l10n.providersPageDisabledStatus,
-                      style: TextStyle(fontSize: 11, color: statusFg),
+                    const SizedBox(width: 8),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 150),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeOut,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: ScaleTransition(scale: anim, child: child),
+                      ),
+                      child: selectMode
+                          ? const SizedBox.shrink(key: ValueKey('none'))
+                          : Icon(
+                              Lucide.ChevronRight,
+                              size: 16,
+                              color: color,
+                              key: const ValueKey('chev'),
+                            ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 150),
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeOut,
-                    transitionBuilder: (child, anim) => FadeTransition(opacity: anim, child: ScaleTransition(scale: anim, child: child)),
-                    child: selectMode
-                        ? const SizedBox.shrink(key: ValueKey('none'))
-                        : Icon(Lucide.ChevronRight, size: 16, color: color, key: const ValueKey('chev')),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              ));
+            );
 
-            Widget line = KeyedSubtree(key: ValueKey('row-$index'), child: rowContent);
+            Widget line = KeyedSubtree(
+              key: ValueKey('row-$index'),
+              child: rowContent,
+            );
             if (!selectMode) {
-              line = ReorderableDelayedDragStartListener(index: index, child: line);
+              line = ReorderableDelayedDragStartListener(
+                index: index,
+                child: line,
+              );
             }
             return Column(children: [line, if (!isLast) _iosDivider(context)]);
           },
@@ -548,6 +731,7 @@ class _SelectionBar extends StatelessWidget {
     required this.onExport,
     required this.onDelete,
     required this.onSelectAll,
+    required this.onMoveToGroup,
   });
   final bool visible;
   final int count;
@@ -555,6 +739,7 @@ class _SelectionBar extends StatelessWidget {
   final VoidCallback onExport;
   final VoidCallback onDelete;
   final VoidCallback onSelectAll;
+  final VoidCallback onMoveToGroup;
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -585,6 +770,13 @@ class _SelectionBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 14),
                     _GlassCircleButton(
+                      icon: Lucide.Folder,
+                      color: cs.primary,
+                      semanticLabel: l10n.providerGroupMoveToGroup,
+                      onTap: onMoveToGroup,
+                    ),
+                    const SizedBox(width: 14),
+                    _GlassCircleButton(
                       icon: Lucide.checkCheck,
                       color: cs.primary,
                       semanticLabel: null,
@@ -609,7 +801,13 @@ class _SelectionBar extends StatelessWidget {
 }
 
 class _CapsuleButton extends StatefulWidget {
-  const _CapsuleButton({required this.label, required this.icon, required this.color, required this.onTap, this.outlined = false});
+  const _CapsuleButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.outlined = false,
+  });
   final String label;
   final IconData icon;
   final Color color;
@@ -627,10 +825,18 @@ class _CapsuleButtonState extends State<_CapsuleButton> {
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     // iOS glass style: grey border + frosted background; keep icon/label tinted by provided color
-    final glassBase = isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.65);
-    final overlay = isDark ? Colors.black.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-    final tileColor = _pressed ? Color.alphaBlend(overlay, glassBase) : glassBase;
-    final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.35 : 0.40); // subtle grey border
+    final glassBase = isDark
+        ? Colors.black.withOpacity(0.06)
+        : Colors.white.withOpacity(0.65);
+    final overlay = isDark
+        ? Colors.black.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
+    final tileColor = _pressed
+        ? Color.alphaBlend(overlay, glassBase)
+        : glassBase;
+    final borderColor = cs.outlineVariant.withOpacity(
+      isDark ? 0.35 : 0.40,
+    ); // subtle grey border
     final fg = widget.color; // use provided color for content only
 
     return GestureDetector(
@@ -664,7 +870,14 @@ class _CapsuleButtonState extends State<_CapsuleButton> {
                 children: [
                   Icon(widget.icon, size: 16, color: fg),
                   const SizedBox(width: 6),
-                  Text(widget.label, style: TextStyle(color: fg, fontSize: 14, fontWeight: FontWeight.w600)),
+                  Text(
+                    widget.label,
+                    style: TextStyle(
+                      color: fg,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -693,7 +906,6 @@ class _GlassCircleButton extends StatefulWidget {
   State<_GlassCircleButton> createState() => _GlassCircleButtonState();
 }
 
-
 class _GlassCircleButtonState extends State<_GlassCircleButton> {
   bool _pressed = false;
   @override
@@ -701,9 +913,15 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
-    final glassBase = isDark ? Colors.black.withOpacity(0.06) : Colors.white.withOpacity(0.06);
-    final overlay = isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.05);
-    final tileColor = _pressed ? Color.alphaBlend(overlay, glassBase) : glassBase;
+    final glassBase = isDark
+        ? Colors.black.withOpacity(0.06)
+        : Colors.white.withOpacity(0.06);
+    final overlay = isDark
+        ? Colors.white.withOpacity(0.06)
+        : Colors.black.withOpacity(0.05);
+    final tileColor = _pressed
+        ? Color.alphaBlend(overlay, glassBase)
+        : glassBase;
     final borderColor = cs.outlineVariant.withOpacity(isDark ? 0.10 : 0.10);
 
     final child = SizedBox(
@@ -747,49 +965,85 @@ class _GlassCircleButtonState extends State<_GlassCircleButton> {
   }
 }
 
-Future<void> _showMultiExportSheet(BuildContext context, List<String> keys) async {
+Future<void> _showMultiExportSheet(
+  BuildContext context,
+  List<String> keys,
+) async {
   final cs = Theme.of(context).colorScheme;
   final settings = context.read<SettingsProvider>();
   final l10n = AppLocalizations.of(context)!;
   final entries = [
     for (final k in keys)
       () {
-        final cfg = settings.providerConfigs[k] ?? settings.getProviderConfig(k);
+        final cfg =
+            settings.providerConfigs[k] ?? settings.getProviderConfig(k);
         final name = (cfg.name.isNotEmpty ? cfg.name : k);
         final code = encodeProviderConfig(cfg);
         return {'name': name, 'code': code};
-      }()
+      }(),
   ];
   final text = entries.map((e) => e['code']).join('\n');
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: cs.surface,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
     builder: (ctx) {
       final bool showQr = keys.length <= 4;
       Rect shareAnchorRect(BuildContext bctx) {
         try {
           final ro = bctx.findRenderObject();
-          if (ro is RenderBox && ro.hasSize && ro.size.width > 0 && ro.size.height > 0) {
+          if (ro is RenderBox &&
+              ro.hasSize &&
+              ro.size.width > 0 &&
+              ro.size.height > 0) {
             final origin = ro.localToGlobal(Offset.zero);
             return origin & ro.size;
           }
         } catch (_) {}
         final size = MediaQuery.of(bctx).size;
-        return Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: 1, height: 1);
+        return Rect.fromCenter(
+          center: Offset(size.width / 2, size.height / 2),
+          width: 1,
+          height: 1,
+        );
       }
+
       return SafeArea(
         top: false,
         child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 10, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            10,
+            16,
+            16 + MediaQuery.of(ctx).viewInsets.bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: cs.onSurface.withOpacity(0.2), borderRadius: BorderRadius.circular(999)))),
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: cs.onSurface.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
-              Center(child: Text(l10n.providersPageExportSelectedTitle(keys.length), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600))),
+              Center(
+                child: Text(
+                  l10n.providersPageExportSelectedTitle(keys.length),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
               const SizedBox(height: 12),
               // Show QR only when selection is small to avoid overlong input
               if (showQr) ...[
@@ -799,7 +1053,9 @@ Future<void> _showMultiExportSheet(BuildContext context, List<String> keys) asyn
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: cs.outlineVariant.withOpacity(0.2)),
+                      border: Border.all(
+                        color: cs.outlineVariant.withOpacity(0.2),
+                      ),
                     ),
                     child: PrettyQr(
                       data: text,
@@ -832,7 +1088,11 @@ Future<void> _showMultiExportSheet(BuildContext context, List<String> keys) asyn
                       label: l10n.providersPageExportCopyButton,
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: text));
-                        showAppSnackBar(context, message: l10n.providersPageExportCopiedSnackbar, type: NotificationType.success);
+                        showAppSnackBar(
+                          context,
+                          message: l10n.providersPageExportCopiedSnackbar,
+                          type: NotificationType.success,
+                        );
                       },
                     ),
                   ),
@@ -843,7 +1103,11 @@ Future<void> _showMultiExportSheet(BuildContext context, List<String> keys) asyn
                       label: l10n.providersPageExportShareButton,
                       onTap: () async {
                         final rect = shareAnchorRect(ctx);
-                        await Share.share(text, subject: 'AI Providers', sharePositionOrigin: rect);
+                        await Share.share(
+                          text,
+                          subject: 'AI Providers',
+                          sharePositionOrigin: rect,
+                        );
                       },
                     ),
                   ),
@@ -908,7 +1172,6 @@ class _BrandAvatar extends StatelessWidget {
   final String name;
   final double size;
 
-
   bool _preferMonochromeWhite(String n) {
     final k = n.toLowerCase();
     if (RegExp(r'openai|gpt|o\d').hasMatch(k)) return true;
@@ -936,8 +1199,14 @@ class _BrandAvatar extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: asset == null
-          ? Text(name.isNotEmpty ? name.characters.first.toUpperCase() : '?',
-              style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700, fontSize: size * 0.42))
+          ? Text(
+              name.isNotEmpty ? name.characters.first.toUpperCase() : '?',
+              style: TextStyle(
+                color: cs.primary,
+                fontWeight: FontWeight.w700,
+                fontSize: size * 0.42,
+              ),
+            )
           : _IconAsset(
               asset: asset,
               size: size * 0.62,
@@ -949,7 +1218,11 @@ class _BrandAvatar extends StatelessWidget {
 }
 
 class _IconAsset extends StatelessWidget {
-  const _IconAsset({required this.asset, required this.size, this.monochromeWhite = false});
+  const _IconAsset({
+    required this.asset,
+    required this.size,
+    this.monochromeWhite = false,
+  });
   final String asset;
   final double size;
   final bool monochromeWhite;
@@ -982,11 +1255,21 @@ class _Provider {
   final String keyName;
   final bool enabled;
   final int modelCount;
-  _Provider({required this.name, required this.keyName, required this.enabled, required this.modelCount});
+  _Provider({
+    required this.name,
+    required this.keyName,
+    required this.enabled,
+    required this.modelCount,
+  });
 }
 
 class _DragHandle extends StatelessWidget {
-  const _DragHandle({required this.onDragStarted, required this.onDragEnd, required this.feedback, required this.data});
+  const _DragHandle({
+    required this.onDragStarted,
+    required this.onDragEnd,
+    required this.feedback,
+    required this.data,
+  });
   final VoidCallback onDragStarted;
   final VoidCallback onDragEnd;
   final Widget feedback;
@@ -1011,7 +1294,11 @@ class _DragHandle extends StatelessWidget {
         width: 40,
         height: 40,
         alignment: Alignment.center,
-        child: Icon(Lucide.GripHorizontal, size: 24, color: cs.onSurface.withOpacity(0.7)),
+        child: Icon(
+          Lucide.GripHorizontal,
+          size: 24,
+          color: cs.onSurface.withOpacity(0.7),
+        ),
       ),
       childWhenDragging: const SizedBox(width: 40, height: 40),
     );
@@ -1064,8 +1351,16 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => setState(() => _pressed = false),
         onTapCancel: () => setState(() => _pressed = false),
-        onTap: () { if (widget.haptics) Haptics.light(); widget.onTap(); },
-        onLongPress: widget.onLongPress == null ? null : () { if (widget.haptics) Haptics.light(); widget.onLongPress!.call(); },
+        onTap: () {
+          if (widget.haptics) Haptics.light();
+          widget.onTap();
+        },
+        onLongPress: widget.onLongPress == null
+            ? null
+            : () {
+                if (widget.haptics) Haptics.light();
+                widget.onLongPress!.call();
+              },
         child: AnimatedScale(
           scale: _pressed ? 0.95 : 1.0,
           duration: const Duration(milliseconds: 100),
@@ -1082,7 +1377,12 @@ class _TactileIconButtonState extends State<_TactileIconButton> {
 
 // Row tactile wrapper for iOS-style lists: no ripple, optional haptics, color-only press feedback
 class _TactileRow extends StatefulWidget {
-  const _TactileRow({required this.builder, this.onTap, this.pressedScale = 1.00, this.haptics = true});
+  const _TactileRow({
+    required this.builder,
+    this.onTap,
+    this.pressedScale = 1.00,
+    this.haptics = true,
+  });
   final Widget Function(bool pressed) builder;
   final VoidCallback? onTap;
   final double pressedScale;
@@ -1093,7 +1393,10 @@ class _TactileRow extends StatefulWidget {
 
 class _TactileRowState extends State<_TactileRow> {
   bool _pressed = false;
-  void _setPressed(bool v) { if (_pressed != v) setState(() => _pressed = v); }
+  void _setPressed(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -1101,24 +1404,34 @@ class _TactileRowState extends State<_TactileRow> {
       onTapDown: widget.onTap == null ? null : (_) => _setPressed(true),
       onTapUp: widget.onTap == null ? null : (_) => _setPressed(false),
       onTapCancel: widget.onTap == null ? null : () => _setPressed(false),
-      onTap: widget.onTap == null ? null : () {
-        if (widget.haptics && context.read<SettingsProvider>().hapticsOnListItemTap) Haptics.soft();
-        widget.onTap!.call();
-      },
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptics &&
+                  context.read<SettingsProvider>().hapticsOnListItemTap)
+                Haptics.soft();
+              widget.onTap!.call();
+            },
       child: widget.builder(_pressed),
     );
   }
 }
 
 class _AnimatedPressColor extends StatelessWidget {
-  const _AnimatedPressColor({required this.pressed, required this.base, required this.builder});
+  const _AnimatedPressColor({
+    required this.pressed,
+    required this.base,
+    required this.builder,
+  });
   final bool pressed;
   final Color base;
   final Widget Function(Color color) builder;
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final target = pressed ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base) : base;
+    final target = pressed
+        ? (Color.lerp(base, isDark ? Colors.black : Colors.white, 0.55) ?? base)
+        : base;
     return TweenAnimationBuilder<Color?>(
       tween: ColorTween(end: target),
       duration: const Duration(milliseconds: 220),
@@ -1130,5 +1443,11 @@ class _AnimatedPressColor extends StatelessWidget {
 
 Widget _iosDivider(BuildContext context) {
   final cs = Theme.of(context).colorScheme;
-  return Divider(height: 6, thickness: 0.6, indent: 54, endIndent: 12, color: cs.outlineVariant.withOpacity(0.18));
+  return Divider(
+    height: 6,
+    thickness: 0.6,
+    indent: 54,
+    endIndent: 12,
+    color: cs.outlineVariant.withOpacity(0.18),
+  );
 }
