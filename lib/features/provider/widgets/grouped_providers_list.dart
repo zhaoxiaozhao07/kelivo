@@ -170,8 +170,17 @@ class _GroupSection extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
 
+    // Filter out deleted providers - only show built-in or existing ones
+    final builtinKeys = getBuiltinProviderKeys().toSet();
+    final providerKeys = group.providerKeys
+        .where(
+          (k) =>
+              builtinKeys.contains(k) ||
+              settings.providerConfigs.containsKey(k),
+        )
+        .toList();
+
     // 将启用的供应商排在最上面
-    final providerKeys = List<String>.from(group.providerKeys);
     providerKeys.sort((a, b) {
       final aEnabled = settings.getProviderConfig(a).enabled;
       final bEnabled = settings.getProviderConfig(b).enabled;

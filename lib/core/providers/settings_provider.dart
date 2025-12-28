@@ -1638,6 +1638,8 @@ class SettingsProvider extends ChangeNotifier {
     _providerConfigs.remove(key);
     // Remove from order
     _providersOrder = List<String>.from(_providersOrder.where((k) => k != key));
+    // Remove from all groups
+    await removeProviderFromAllGroups(key);
 
     // Clear selections referencing this provider to avoid re-creating defaults
     final prefs = await SharedPreferences.getInstance();
